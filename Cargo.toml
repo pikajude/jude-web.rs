@@ -1,0 +1,10 @@
+[package]
+name = "jude-web"
+version = "0.1.0"
+authors = ["Jude Taylor <me@jude.bio>"]
+
+[dependencies]
+deuterium = "*"
+iron = "*"
+mustache = "*"
+rustc-serialize = "*"
