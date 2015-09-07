@@ -29,11 +29,17 @@ let
 
       install_name_tool \
         -change /usr/lib/libcurl.4.dylib ${curl}/lib/libcurl.dylib \
+        -change /usr/lib/libiconv.2.dylib ${libiconv}/lib/libiconv.dylib \
+        -change /usr/lib/libssl.0.9.8.dylib ${openssl}/lib/libssl.dylib \
+        -change /usr/lib/libcrypto.0.9.8.dylib ${openssl}/lib/libcrypto.dylib \
         $out/bin/cargo
     '';
   };
 
 in stdenv.mkDerivation {
   name = "jude-web";
-  buildInputs = [ rust openssl ];
+  buildInputs = [ mylibedit readline rust openssl ];
+  shellHook = ''
+    addToSearchPath PATH ./rusti/target/release
+  '';
 }

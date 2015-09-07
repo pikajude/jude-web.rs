@@ -5,6 +5,9 @@ authors = ["Jude Taylor <me@jude.bio>"]
 
 [dependencies]
 deuterium = "*"
+env_logger = "*"
 iron = "*"
+lazy_static = "*"
+log = "*"
 mustache = "*"
 rustc-serialize = "*"

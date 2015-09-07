@@ -2,29 +2,28 @@
 
 extern crate iron;
 extern crate mustache;
-extern crate rustc_serialize;
+#[macro_use]
+extern crate lazy_static;
+#[macro_use]
+extern crate log;
+extern crate env_logger;
 
 use iron::prelude::*;
 use iron::status;
 
-#[derive(RustcEncodable, RustcDecodable)]
-struct Person {
-    name: String,
-}
+use mustache::MapBuilder;
+
+mod templates;
+use templates::*;
 
 fn main() {
-    fn hello_world(req: &mut Request) -> IronResult<Response> {
-        let tmpl = mustache::compile_str("{{name}}");
-        let mut v = Vec::new();
+    env_logger::init().unwrap();
+    fn hello_world(_: &mut Request) -> IronResult<Response> {
+        let res = template("index.mst".to_string(), MapBuilder::new()
+            .insert("title", &("jude.bio")).ok().unwrap()
+            .build());
 
-        let name = req.url.clone().into_generic_url().query_pairs().and_then(|v|
-            v.into_iter().find(|&(ref name, _)| name == "name")
-        ).map(|(_,b)|b).unwrap_or(String::from("world"));
-        let f = Person { name: name };
-
-        tmpl.render(&mut v, &f).expect("Template rendering failed");
-
-        Ok(Response::with((status::Ok, String::from_utf8(v).unwrap())))
+        Ok(Response::with((status::Ok, res)))
     }
 
     Iron::new(hello_world).http("localhost:3000").unwrap();
