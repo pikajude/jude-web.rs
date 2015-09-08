@@ -10,8 +10,8 @@ let
   rust = stdenv.mkDerivation {
     name = "rustc-1.4.0-nightly";
     src = fetchurl {
-      url = "https://static.rust-lang.org/dist/rust-nightly-x86_64-apple-darwin.tar.gz";
-      sha256 = "1pdsi3qfkxsxappq1l5yswpwhzickm6mrhhpxa6yzw3vzfjcx9sl";
+      url = "http://static.rust-lang.org/dist/2015-09-08/rust-nightly-x86_64-apple-darwin.tar.gz";
+      sha256 = "15n0c0n3701b6giq8w9gysfhc0f5ccvz8vj34d9i40sxn980bmx4";
     };
 
     installPhase = ''

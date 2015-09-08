@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang=en>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+
+    <title>{{title}}</title>
+
+    <!--[if lt IE 9]>
+    <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="row" role="main">
+      <div class="speech large-12 columns">
+        {{#hasMessage}}
+          <div id="message" data-alert class="alert-box warning">
+            {{msg}}
+            <button tabindex="0" href="#" class="close" aria-label="Close Alert">&times;</button>
+          </div>
+        {{/hasMessage}}
+
+        <header>
+          <a id="head" href="/">jude.bio</a>
+          <span class="arrow"></span>
+          <div id="dots">
+            <span class="up-arrow"></span>
+            <a href="https://github.com/pikajude" class="dot" id="github" data-tipsy title="I'm on Github!">I'm on Github!</a>
+            <a href="http://www.linkedin.com/pub/joel-taylor/6a/691/988/" class="dot" id="linkedin" data-tipsy title="I'm on LinkedIn!">I'm on LinkedIn!</a>
+          </div>
+        </header>
+      </div>
+    </div>
+    <h1>{{title}}</h1>
+  </body>
+</html>

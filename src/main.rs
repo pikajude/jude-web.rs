@@ -19,8 +19,10 @@ use templates::*;
 fn main() {
     env_logger::init().unwrap();
     fn hello_world(_: &mut Request) -> IronResult<Response> {
-        let res = template("index.mst".to_string(), MapBuilder::new()
+        let res = template("index.html".to_string(), MapBuilder::new()
             .insert("title", &("jude.bio")).ok().unwrap()
+            .insert("hasMessage", &true).ok().unwrap()
+            .insert("msg", &("foobar")).ok().unwrap()
             .build());
 
         Ok(Response::with((status::Ok, res)))
