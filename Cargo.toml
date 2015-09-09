@@ -5,14 +5,17 @@ authors = ["Jude Taylor <me@jude.bio>"]
 
 [dependencies]
 deuterium = "*"
-env_logger = "*"
-iron = "*"
 lazy_static = "*"
-log = "*"
 mustache = "*"
-router = "*"
 rustc-serialize = "*"
 json_macros = "*"
+sodiumoxide = "*"
+rand = "*"
+cookie = "0.1.21"
+log = "*"
+env_logger = "*"
 
-[dependencies.logger]
-git = "https://github.com/iron/logger.git"
+iron = "*"
+urlencoded = "*"
+logger = "*"
+router = "*"

@@ -26,10 +26,10 @@ impl TemplateCache {
 
     fn load_template(&mut self, file: &String) {
         let filepath = format!("templates/{}.mst", file);
-        info!(target: "mustache", "Loading template for {}", file);
+        // info!(target: "mustache", "Loading template for {}", file);
         let t = mustache::compile_path(filepath.to_owned())
             .expect(&format!("Could not load {}", filepath));
-        debug!(target: "mustache", "Loaded template for {}: {:?}", filepath, t);
+        // debug!(target: "mustache", "Loaded template for {}: {:?}", filepath, t);
         self.cache.insert(file.to_owned(), t);
     }
 }

@@ -38,7 +38,7 @@ let
 
 in stdenv.mkDerivation {
   name = "jude-web";
-  buildInputs = [ mylibedit readline rust openssl ];
+  buildInputs = [ mylibedit readline rust openssl pkgconfig libsodium ];
   shellHook = ''
     addToSearchPath PATH ./rusti/target/release
   '';
