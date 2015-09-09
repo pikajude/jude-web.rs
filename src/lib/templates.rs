@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 lazy_static! {
-    pub static ref TEMPLATE_CACHE: RwLock<TemplateCache> = RwLock::new(TemplateCache { cache: HashMap::new() });
+    static ref TEMPLATE_CACHE: RwLock<TemplateCache> = RwLock::new(TemplateCache { cache: HashMap::new() });
 }
 
 pub struct TemplateCache {

@@ -10,4 +10,9 @@ iron = "*"
 lazy_static = "*"
 log = "*"
 mustache = "*"
+router = "*"
 rustc-serialize = "*"
+json_macros = "*"
+
+[dependencies.logger]
+git = "https://github.com/iron/logger.git"

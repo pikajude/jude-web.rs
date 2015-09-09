@@ -14,12 +14,12 @@
   <body>
     <div class="row" role="main">
       <div class="speech large-12 columns">
-        {{#hasMessage}}
+        {{#msg?}}
           <div id="message" data-alert class="alert-box warning">
             {{msg}}
             <button tabindex="0" href="#" class="close" aria-label="Close Alert">&times;</button>
           </div>
-        {{/hasMessage}}
+        {{/msg?}}
 
         <header>
           <a id="head" href="/">jude.bio</a>
