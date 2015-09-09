@@ -16,12 +16,16 @@ pub struct TemplateCache {
 }
 
 impl TemplateCache {
-    fn template_for(&self, file: &String) -> Option<&mustache::Template> {
-        self.cache.get(file)
+    fn has_template(&self, file: &String) -> bool {
+        self.cache.contains_key(file)
+    }
+
+    fn template_for(&self, file: &String) -> &mustache::Template {
+        self.cache.get(file).expect(&format!("template_for({}) missing", file))
     }
 
     fn load_template(&mut self, file: &String) {
-        let filepath = format!("templates/{}", file);
+        let filepath = format!("templates/{}.mst", file);
         info!(target: "mustache", "Loading template for {}", file);
         let t = mustache::compile_path(filepath.to_owned())
             .expect(&format!("Could not load {}", filepath));
@@ -31,18 +35,23 @@ impl TemplateCache {
 }
 
 pub fn template(filename: String, context: Data) -> (String, modifiers::Header<ContentType>) {
-    let h = TEMPLATE_CACHE.read().unwrap();
-    let tmpl = h.template_for(&filename);
-    let t = match tmpl {
-        None => {
-            let mut w = TEMPLATE_CACHE.write().unwrap();
-            w.load_template(&filename);
-            h.template_for(&filename).expect("Template insertion failed!")
-        }
-        Some(x) => x
-    };
-    let mut v = Vec::new();
-    t.render_data(&mut v, &context);
+    let render = |tmpl: &mustache::Template| {
+        let mut v = Vec::new();
+        tmpl.render_data(&mut v, &context);
 
-    (String::from_utf8(v).unwrap(), modifiers::Header(ContentType::html()))
+        (String::from_utf8(v).unwrap(), modifiers::Header(ContentType::html()))
+    };
+
+    {
+        let h = TEMPLATE_CACHE.read().unwrap();
+        if h.has_template(&filename) {
+            return render(h.template_for(&filename))
+        }
+    }
+    {
+        let mut w = TEMPLATE_CACHE.write().unwrap();
+        w.load_template(&filename);
+        let t = w.template_for(&filename);
+        render(t)
+    }
 }
