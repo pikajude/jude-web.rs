@@ -16,10 +16,8 @@ use iron::status;
 
 use rustc_serialize::json;
 
-mod session_wrapper;
-use self::session_wrapper::SessionWrapper;
-
-type SessionMap = HashMap<String, Vec<u8>>;
+mod internal;
+pub use self::internal::*;
 
 struct SessionMapType;
 struct Value {
@@ -28,7 +26,12 @@ struct Value {
 
 impl Key for SessionMapType { type Value = Value; }
 
-pub struct SessionWare { key: Vec<u8> }
+struct SessionWare { key: Vec<u8> }
+
+struct SessionWareBefore { ware: SessionWare }
+struct SessionWareAfter { ware: SessionWare }
+
+pub type SessionWarePair = (SessionWareBefore, SessionWareAfter);
 
 static PANIC_STR: &'static str = "Session not initialized. Did you link the SessionWare middleware?";
 
@@ -38,8 +41,12 @@ enum KeyLoadError {
 }
 
 #[derive(Debug)]
+/// Represents failure to serialize the session.
 pub enum SessionSaveError {
+    /// The `session` request extension isn't present, which means that the SessionWare middleware
+    /// has probably not been linked.
     SessionAbsent,
+    /// The `SessionMap` can't be serialized to JSON.
     SessionEncodeError(json::EncoderError)
 }
 
@@ -64,7 +71,7 @@ impl std::error::Error for SessionSaveError {
 
     fn cause(&self) -> Option<&std::error::Error> {
         match *self {
-            SessionSaveError::SessionEncodeError(ref j) => Some(j as &std::error::Error),
+            SessionEncodeError(ref j) => Some(j as &std::error::Error),
             _ => None
         }
     }
@@ -83,18 +90,6 @@ impl From<SessionSaveError> for IronError {
 }
 
 impl SessionWare {
-    pub fn with_key<P: AsRef<Path>>(key_path: P) -> (SessionWare, SessionWare) {
-        match SessionWare::read_or_create_key(key_path) {
-            Err(e) => panic!(e),
-            Ok(secretbox::Key(k)) => {
-                let mut v = vec![];
-                v.push_all(&k);
-                let w = v.clone();
-                (SessionWare { key: v }, SessionWare { key: w })
-            }
-        }
-    }
-
     fn read_or_create_key<P: AsRef<Path>>(key_path: P) -> Result<secretbox::Key, KeyLoadError> {
         let kp = key_path.as_ref();
         let key_exists = match fs::metadata(kp) {
@@ -117,10 +112,10 @@ impl SessionWare {
     }
 }
 
-impl BeforeMiddleware for SessionWare {
+impl BeforeMiddleware for SessionWareBefore {
     fn before(&self, req: &mut Request) -> IronResult<()> {
         let map = req.headers.get::<Cookie>().and_then(|c| {
-            let jar = c.to_cookie_jar(self.key.as_slice());
+            let jar = c.to_cookie_jar(self.ware.key.as_slice());
             jar.encrypted().find("_SESSION").and_then(|c| {
                 json::decode(&c.value).ok()
             })
@@ -131,7 +126,7 @@ impl BeforeMiddleware for SessionWare {
     }
 }
 
-impl AfterMiddleware for SessionWare {
+impl AfterMiddleware for SessionWareAfter {
     fn after(&self, req: &mut Request, res: Response) -> IronResult<Response> {
         use iron::headers::SetCookie;
         use cookie::{CookieJar,Cookie as CookiePair};
@@ -139,8 +134,8 @@ impl AfterMiddleware for SessionWare {
         let smap = try!(req.extensions.get::<SessionMapType>().ok_or(SessionSaveError::SessionAbsent));
         let hash = try!(json::encode(&smap.sml).map_err(|e|SessionSaveError::SessionEncodeError(e)));
         let jar = req.headers.get::<Cookie>().map(|c| {
-            c.to_cookie_jar(self.key.as_slice())
-        }).unwrap_or(CookieJar::new(self.key.as_slice()));
+            c.to_cookie_jar(self.ware.key.as_slice())
+        }).unwrap_or(CookieJar::new(self.ware.key.as_slice()));
         jar.encrypted().add(CookiePair::new("_SESSION".to_string(), hash));
         debug!(target: "session::set", "{:?}", smap.sml);
         let mut r = res;
@@ -149,7 +144,54 @@ impl AfterMiddleware for SessionWare {
     }
 }
 
-pub fn session<'a>(req: &'a mut Request) -> SessionWrapper<'a> {
+/// Retrieve the current user's `Session`.
+pub fn get<'a>(req: &'a mut Request) -> Session<'a> {
     let mut map = req.extensions.get_mut::<SessionMapType>().expect(PANIC_STR);
-    SessionWrapper::new(&mut map.sml)
+    Session::new(&mut map.sml)
+}
+
+/// Creates and returns a new `SessionWare` pair that uses the given `key_file` to encrypt
+/// sessions.
+///
+/// # Examples:
+/// ```
+/// use jude_web::middleware::session;
+///
+/// fn main() {
+///     let warePair = session::with_key_file("client-key.aes");
+///     let mut chain = Chain::new(warePair);
+///     Iron::new(chain).http("localhost:3000").unwrap();
+///     println!("On 3000!")
+/// }
+/// ```
+pub fn with_key_file<P: AsRef<Path>>(key_file: P) -> SessionWarePair {
+    match SessionWare::read_or_create_key(key_file) {
+        Err(e) => panic!(e),
+        Ok(secretbox::Key(k)) => {
+            let mut v = vec![];
+            v.push_all(&k);
+            self::with_key(v.as_slice())
+        }
+    }
+}
+
+/// Creates and returns a new `SessionWare` pair that uses the given `key` data to encrypt
+/// sessions.
+///
+/// # Examples:
+/// ```
+/// use jude_web::middleware::session;
+///
+/// fn main() {
+///     let warePair = session::with_key(b"this is a very secret key");
+///     let mut chain = Chain::new(warePair);
+///     Iron::new(chain).http("localhost:3000").unwrap();
+///     println!("On 3000!")
+/// }
+/// ```
+pub fn with_key<K: AsRef<[u8]>>(key: K) -> SessionWarePair {
+    let k = Vec::from(key.as_ref());
+    let j = k.clone();
+    (SessionWareBefore { ware: SessionWare { key: k } },
+     SessionWareAfter { ware: SessionWare { key: j } })
 }
