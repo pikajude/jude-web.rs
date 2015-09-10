@@ -26,10 +26,8 @@ struct Value {
 
 impl Key for SessionMapType { type Value = Value; }
 
-struct SessionWare { key: Vec<u8> }
-
-struct SessionWareBefore { ware: SessionWare }
-struct SessionWareAfter { ware: SessionWare }
+struct SessionWareBefore { key: Vec<u8> }
+struct SessionWareAfter { key: Vec<u8> }
 
 pub type SessionWarePair = (SessionWareBefore, SessionWareAfter);
 
@@ -89,33 +87,31 @@ impl From<SessionSaveError> for IronError {
     }
 }
 
-impl SessionWare {
-    fn read_or_create_key<P: AsRef<Path>>(key_path: P) -> Result<secretbox::Key, KeyLoadError> {
-        let kp = key_path.as_ref();
-        let key_exists = match fs::metadata(kp) {
-            Ok(m) => m.is_file(),
-            Err(ref e) if e.kind() == ErrorKind::NotFound => false,
-            Err(e) => panic!(e)
-        };
-        if key_exists {
-            let mut f: File = try!(File::open(kp));
-            let mut s = Vec::new();
-            f.read_to_end(&mut s).expect("oh no");
-            secretbox::Key::from_slice(s.as_mut_slice()).ok_or(KeyLoadError::CorruptedKeyError)
-        } else {
-            let mut f: File = try!(File::create(kp));
-            let key = secretbox::gen_key();
-            let secretbox::Key(k) = key;
-            try!(f.write_all(&k));
-            Ok(key)
-        }
+fn read_or_create_key<P: AsRef<Path>>(key_path: P) -> Result<secretbox::Key, KeyLoadError> {
+    let kp = key_path.as_ref();
+    let key_exists = match fs::metadata(kp) {
+        Ok(m) => m.is_file(),
+        Err(ref e) if e.kind() == ErrorKind::NotFound => false,
+        Err(e) => panic!(e)
+    };
+    if key_exists {
+        let mut f: File = try!(File::open(kp));
+        let mut s = Vec::new();
+        f.read_to_end(&mut s).expect("oh no");
+        secretbox::Key::from_slice(s.as_mut_slice()).ok_or(KeyLoadError::CorruptedKeyError)
+    } else {
+        let mut f: File = try!(File::create(kp));
+        let key = secretbox::gen_key();
+        let secretbox::Key(k) = key;
+        try!(f.write_all(&k));
+        Ok(key)
     }
 }
 
 impl BeforeMiddleware for SessionWareBefore {
     fn before(&self, req: &mut Request) -> IronResult<()> {
         let map = req.headers.get::<Cookie>().and_then(|c| {
-            let jar = c.to_cookie_jar(self.ware.key.as_slice());
+            let jar = c.to_cookie_jar(self.key.as_slice());
             jar.encrypted().find("_SESSION").and_then(|c| {
                 json::decode(&c.value).ok()
             })
@@ -134,8 +130,8 @@ impl AfterMiddleware for SessionWareAfter {
         let smap = try!(req.extensions.get::<SessionMapType>().ok_or(SessionSaveError::SessionAbsent));
         let hash = try!(json::encode(&smap.sml).map_err(|e|SessionSaveError::SessionEncodeError(e)));
         let jar = req.headers.get::<Cookie>().map(|c| {
-            c.to_cookie_jar(self.ware.key.as_slice())
-        }).unwrap_or(CookieJar::new(self.ware.key.as_slice()));
+            c.to_cookie_jar(self.key.as_slice())
+        }).unwrap_or(CookieJar::new(self.key.as_slice()));
         jar.encrypted().add(CookiePair::new("_SESSION".to_string(), hash));
         debug!(target: "session::set", "{:?}", smap.sml);
         let mut r = res;
@@ -165,7 +161,7 @@ pub fn get<'a>(req: &'a mut Request) -> Session<'a> {
 /// }
 /// ```
 pub fn with_key_file<P: AsRef<Path>>(key_file: P) -> SessionWarePair {
-    match SessionWare::read_or_create_key(key_file) {
+    match read_or_create_key(key_file) {
         Err(e) => panic!(e),
         Ok(secretbox::Key(k)) => {
             let mut v = vec![];
@@ -192,6 +188,6 @@ pub fn with_key_file<P: AsRef<Path>>(key_file: P) -> SessionWarePair {
 pub fn with_key<K: AsRef<[u8]>>(key: K) -> SessionWarePair {
     let k = Vec::from(key.as_ref());
     let j = k.clone();
-    (SessionWareBefore { ware: SessionWare { key: k } },
-     SessionWareAfter { ware: SessionWare { key: j } })
+    (SessionWareBefore { key: k },
+      SessionWareAfter { key: j })
 }
